@@ -5,6 +5,12 @@
 */
 /*global Shiny,Pickr */
 
+// each picker instance will be stored by key/pair
+Shiny.InputBinding.prototype.store = [];
+Shiny.InputBinding.prototype.updateStore = function(el, instance) {
+  this.store[el.id] = instance;
+};
+
 var pickrColorBinding = new Shiny.InputBinding();
 $.extend(pickrColorBinding, {
   find: function(scope) {
@@ -14,26 +20,26 @@ $.extend(pickrColorBinding, {
     return $(el).attr("id");
   },
   getValue: function(el) {
-    return this["instance" + el.id]
+    return this.store[el.id]
       .getColor()
       .toHEXA()
       .toString(0);
   },
   setValue: function(el, value) {
-    this["instance" + el.id].setColor(value);
+    this.store[el.id].setColor(value);
   },
   subscribe: function(el, callback) {
-    this["instance" + el.id].on("init", function(color, instance) {
+    this.store[el.id].on("init", function(color, instance) {
       callback();
     });
-    var event = this["update" + el.id];
-    var hideOnSave = this["hideOnSave" + el.id];
+    var event = this.store[el.id].options.update;
+    var hideOnSave = this.store[el.id].options.hideOnSave;
     if (event == "change") {
-      this["instance" + el.id].on(event, function(color, source, instance) {
+      this.store[el.id].on(event, function(color, source, instance) {
         callback();
       });
     } else {
-      this["instance" + el.id].on(event, function(color, instance) {
+      this.store[el.id].on(event, function(color, instance) {
         if ((hideOnSave === true) & (event != "changestop")) {
           instance.hide();
         }
@@ -42,24 +48,24 @@ $.extend(pickrColorBinding, {
     }
   },
   unsubscribe: function(el) {
-    //$(el).off(".pickrColorBinding");
+    $(el).off(".pickrColorBinding");
   },
   receiveMessage: function(el, data) {
     if (data.hasOwnProperty("value")) {
-      this["instance" + el.id].setColor(data.value);
+      this.store[el.id].setColor(data.value);
     }
     if (data.hasOwnProperty("action")) {
       if (data.action == "enable") {
-        this["instance" + el.id].enable();
+        this.store[el.id].enable();
       }
       if (data.action == "disable") {
-        this["instance" + el.id].disable();
+        this.store[el.id].disable();
       }
       if (data.action == "show") {
-        this["instance" + el.id].show();
+        this.store[el.id].show();
       }
       if (data.action == "hide") {
-        this["instance" + el.id].hide();
+        this.store[el.id].hide();
       }
     }
   },
@@ -104,9 +110,10 @@ $.extend(pickrColorBinding, {
         });
       }
     }
-    this["instance" + el.id] = pickr;
-    this["update" + el.id] = config.update;
-    this["hideOnSave" + el.id] = config.hideOnSave;
+    
+    pickr.options.update = config.update;
+    pickr.options.hideOnSave = config.hideOnSave;
+    this.updateStore(el, pickr);
   }
 });
 Shiny.inputBindings.register(pickrColorBinding, "shinyWidgets.colorPickr");
